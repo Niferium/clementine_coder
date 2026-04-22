@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+demo
+skills
+meetings.txt
+prompt.py
+model.py
