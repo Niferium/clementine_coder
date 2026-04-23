@@ -385,16 +385,23 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── Code blocks ─────────────────────────────────────────────────────────── */
-  .msg-agent pre {
+  .msg-agent .code-wrap {
     margin: 12px 0;
     border-radius: var(--radius-sm);
-    background: var(--bg-code) !important;
     border: 1px solid var(--border);
-    overflow: auto;
-    position: relative;
+    overflow: hidden;
+    background: var(--bg-code);
   }
 
-  .msg-agent pre code {
+  .msg-agent .code-wrap pre {
+    margin: 0;
+    background: var(--bg-code) !important;
+    border: none;
+    border-radius: 0;
+    overflow-x: auto;
+  }
+
+  .msg-agent .code-wrap pre code {
     font-family: var(--font-mono);
     font-size: 13px;
     padding: 16px !important;
@@ -404,7 +411,7 @@
   }
 
   /* SELF-CHECK comment highlight */
-  .msg-agent pre code .hljs-comment {
+  .msg-agent .code-wrap pre code .hljs-comment {
     color: rgba(139,92,246,0.85) !important;
     font-style: italic;
   }
@@ -415,6 +422,7 @@
     justify-content: space-between;
     padding: 6px 14px;
     border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text-muted);
@@ -631,8 +639,8 @@
   }
 
   /* ── Scrollbar for code ──────────────────────────────────────────────────── */
-  pre::-webkit-scrollbar       { height: 4px; }
-  pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  .code-wrap pre::-webkit-scrollbar       { height: 4px; }
+  .code-wrap pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -924,14 +932,18 @@ function renderResponse(raw) {
       }
 
       const copyId = 'copy_' + Math.random().toString(36).slice(2, 8);
+      // Store raw code in a hidden textarea so copyCode() can read it safely.
+      // We cannot pass it via onclick attribute (backticks break template literals
+      // inside HTML attributes) and div-inside-pre is invalid HTML.
       html += `
-        <pre>
+        <div class="code-wrap">
           <div class="code-header">
             <span>${lang || 'text'}</span>
-            <button class="copy-btn" id="${copyId}" onclick="copyCode(this, \`${escapeHtml(code)}\`)">Copy</button>
+            <button class="copy-btn" id="${copyId}" onclick="copyCode(this)">Copy</button>
           </div>
-          <code class="language-${lang}">${highlighted}</code>
-        </pre>`;
+          <pre><code class="language-${lang}">${highlighted}</code></pre>
+          <textarea class="code-raw" readonly style="display:none">${escapeHtml(code)}</textarea>
+        </div>`;
     } else {
       // Simple paragraph/inline rendering
       let p = escapeHtml(part)
@@ -952,8 +964,27 @@ function renderResponse(raw) {
   return html;
 }
 
-function copyCode(btn, code) {
+function copyCode(btn) {
+  // Walk up to .code-wrap, then find the hidden textarea holding the raw code.
+  const wrap    = btn.closest('.code-wrap');
+  const rawArea = wrap && wrap.querySelector('.code-raw');
+  const code    = rawArea ? rawArea.value : '';
+
+  if (!code) return;
+
   navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    // Fallback for browsers/contexts where clipboard API is unavailable
+    rawArea.style.display = 'block';
+    rawArea.select();
+    document.execCommand('copy');
+    rawArea.style.display = 'none';
     btn.textContent = 'Copied!';
     btn.classList.add('copied');
     setTimeout(() => {
@@ -1086,8 +1117,19 @@ async function sendMessage() {
 
   es.addEventListener('self_check_issues', e => {
     const d = JSON.parse(e.data);
-    if (d.issues) d.issues.forEach(i => allIssues.push(i));
-    totalIssuesFixed += (d.issues || []).length;
+    if (d.issues) {
+      d.issues.forEach(i => {
+        // Deduplicate by line+type+suggestion fingerprint to prevent
+        // the same issue appearing multiple times when multiple code
+        // blocks are reviewed or when passes overlap on the same block.
+        const key = `${i.line}|${i.type}|${i.suggestion}`;
+        if (!allIssues.some(x => `${x.line}|${x.type}|${x.suggestion}` === key)) {
+          allIssues.push(i);
+        }
+      });
+    }
+    // Count only net-new unique issues for the badge label
+    totalIssuesFixed = allIssues.length;
   });
 
   es.addEventListener('self_check_clean', e => {

@@ -31,13 +31,12 @@ MAX_SELF_CHECK_PASSES = 3   # Default max passes before giving up
 
 # ── System prompts ─────────────────────────────────────────────────────────────
 
-REVIEWER_SYSTEM = """You are a senior software engineer code reviewer. Your job is to review a code block and return a JSON array of issues found.
+REVIEWER_SYSTEM = """You are a Senior Software Engineer code reviewer. Your job is to review a code block and return a JSON array of issues found.
 
 For each issue return:
   {"line": <line_number_int>, "severity": "high|medium|low", "type": "bug|security|style|optimization", "suggestion": "<what to fix and how>"}
 
 Rules:
-- Always read the code carefully and fully before responding. Do not make assumptions.
 - Only flag REAL issues — not stylistic preferences unless clearly wrong
 - "high" severity = bugs, security flaws, broken logic
 - "medium" severity = architectural issues, missing error handling, bad patterns
@@ -46,7 +45,7 @@ Rules:
 - Return ONLY the JSON array. No markdown, no preamble, no explanation.
 """
 
-REWRITER_SYSTEM = """You are a senior software engineer. You will receive a code block and a list of issues to fix.
+REWRITER_SYSTEM = """You are a Senior Software Engineer. You will receive a code block and a list of issues to fix.
 
 For EVERY change you make, add a comment on the line ABOVE the changed line in this format:
     SELF-CHECK [SEVERITY]: <type> — <brief reason for the change>
@@ -56,10 +55,9 @@ Example:
     result = subprocess.run(shlex.split(safe_input), ...)
 
 Rules:
-- Always read the issues carefully and fully before making ANY changes. Do not make assumptions.
 - Fix ALL issues listed. Do not skip any.
-- Add a comment based on how did you fix it and what is the reason for the fix on EVERY changed line or block.
-- Make ONLY the necessary changes to fix the issues. Do not rewrite the entire block.
+- Add a SELF-CHECK comment for EVERY changed line or block.
+- Do not add comments for lines you did NOT change.
 - Return ONLY the fixed code block — no markdown fences, no explanation.
 - Preserve all existing comments and docstrings.
 - Keep line structure consistent with the original unless a fix requires restructuring.
@@ -80,7 +78,7 @@ def run_self_check_loop(
     Run the dynamic self-check loop on a model response.
 
     Extracts code blocks from the response, reviews each for issues,
-    rewrites with # SELF-CHECK: comments if needed, and repeats until
+    rewrites with SELF-CHECK: comments if needed, and repeats until
     clean or max_passes is reached.
 
     Args:
@@ -100,8 +98,9 @@ def run_self_check_loop(
         # No code in this response — skip self-check entirely
         return response, 0, 0
 
-    current_response  = response
+    current_response   = response
     total_issues_fixed = 0
+    pass_num           = 0   # tracks last completed pass; 0 = no passes ran
 
     for pass_num in range(1, max_passes + 1):
         logger.log_self_check_start(pass_num, max_passes)
@@ -131,7 +130,7 @@ def run_self_check_loop(
                     "issues": issues,
                 })
 
-            # Rewrite the code block with # SELF-CHECK: comments
+            # Rewrite the code block with SELF-CHECK: comments
             fixed_code = _rewrite_code_block(code, issues, model, tokenizer)
 
             if fixed_code:
@@ -237,37 +236,52 @@ def _parse_issues(raw: str) -> list[dict]:
     """
     Parse the reviewer's raw output into a list of issue dicts.
 
-    Tries JSON first. Falls back to regex extraction if the model
-    wrapped the array in markdown fences.
+    Tries JSON first. Falls back gracefully if the model wrapped the
+    array in markdown fences. str.strip("```json") strips individual
+    characters — not the substring — so we use re.sub instead.
 
     Args:
         raw: Raw string output from the reviewer model.
 
     Returns:
-        List of issue dicts. Empty list on parse failure.
+        List of issue dicts. Empty list on parse failure or no issues.
     """
-    cleaned = raw.strip().strip("```json").strip("```").strip()
+    # Remove markdown code fences the model may have added (e.g. ```json ... ```)
+    cleaned = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```\s*$",       "", cleaned).strip()
+
+    # Fast-path: model returned an explicit empty array
+    if not cleaned or cleaned == "[]":
+        return []
 
     try:
         data = json.loads(cleaned)
-        if isinstance(data, list):
-            # Validate each issue has required fields; drop malformed ones
-            valid = []
-            for item in data:
-                if isinstance(item, dict) and "suggestion" in item:
-                    valid.append({
-                        "line":       item.get("line", 0),
-                        "severity":   item.get("severity", "low").lower(),
-                        "type":       item.get("type", "style"),
-                        "suggestion": item.get("suggestion", ""),
-                    })
-            return valid
-        return []
+        if not isinstance(data, list):
+            return []
+
+        valid = []
+        seen: set[str] = set()   # deduplicate within a single reviewer response
+
+        for item in data:
+            if not isinstance(item, dict) or "suggestion" not in item:
+                continue
+
+            issue = {
+                "line":       item.get("line", 0),
+                "severity":   str(item.get("severity", "low")).lower(),
+                "type":       str(item.get("type", "style")),
+                "suggestion": str(item.get("suggestion", "")),
+            }
+
+            # Fingerprint to drop intra-response duplicates
+            fp = f"{issue['line']}|{issue['type']}|{issue['suggestion']}"
+            if fp not in seen:
+                seen.add(fp)
+                valid.append(issue)
+
+        return valid
 
     except (json.JSONDecodeError, ValueError):
-        # Last resort: check if the model returned an empty array signal
-        if "[]" in cleaned or cleaned in ("", "[]"):
-            return []
         # Cannot parse — treat as no issues to avoid false rewrites
         return []
 
