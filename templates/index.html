@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coding Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  /* ── Design tokens ─────────────────────────────────────────────────────── */
+  :root {
+    --bg:           #0d0d0f;
+    --bg-panel:     #111114;
+    --bg-input:     #18181c;
+    --bg-user:      #1a1f2e;
+    --bg-agent:     #111114;
+    --bg-code:      #0a0a0c;
+    --border:       rgba(255,255,255,0.07);
+    --border-focus: rgba(139,92,246,0.5);
+    --accent:       #8b5cf6;
+    --accent-dim:   rgba(139,92,246,0.15);
+    --accent-glow:  rgba(139,92,246,0.08);
+    --green:        #22c55e;
+    --yellow:       #eab308;
+    --red:          #ef4444;
+    --cyan:         #22d3ee;
+    --orange:       #f97316;
+    --text:         #e8e8f0;
+    --text-dim:     rgba(232,232,240,0.45);
+    --text-muted:   rgba(232,232,240,0.25);
+    --font-ui:      'Syne', sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
+    --radius:       12px;
+    --radius-sm:    8px;
+    --radius-xs:    5px;
+    --sidebar-w:    260px;
+    --header-h:     54px;
+  }
+
+  /* ── Reset ──────────────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: var(--font-ui);
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────────────────── */
+  header {
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    display: grid; place-items: center;
+    font-size: 14px;
+  }
+
+  .logo-text {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+
+  .logo-text span {
+    color: var(--accent);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Skill pill */
+  #skill-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(139,92,246,0.3);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.3s ease;
+  }
+
+  #skill-badge .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  /* Token counter */
+  #token-counter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border-radius: var(--radius-xs);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    transition: all 0.3s ease;
+    min-width: 160px;
+  }
+
+  #token-counter .bar-track {
+    width: 60px; height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  #token-counter .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--green);
+    transition: width 0.4s ease, background 0.4s ease;
+  }
+
+  #token-counter.warn .bar-fill  { background: var(--yellow); }
+  #token-counter.danger .bar-fill { background: var(--red); }
+  #token-counter.warn  { border-color: rgba(234,179,8,0.4); color: var(--yellow); }
+  #token-counter.danger { border-color: rgba(239,68,68,0.4); color: var(--red); }
+
+  .btn-reset {
+    padding: 5px 12px;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-reset:hover {
+    border-color: rgba(239,68,68,0.5);
+    color: var(--red);
+  }
+
+  /* ── Chat container ──────────────────────────────────────────────────────── */
+  .chat-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 0 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+
+  .chat-wrap::-webkit-scrollbar       { width: 4px; }
+  .chat-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  /* ── Message bubbles ─────────────────────────────────────────────────────── */
+  .msg-row {
+    width: 100%;
+    max-width: 740px;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    animation: fadeUp 0.25s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-row + .msg-row { margin-top: 20px; }
+
+  /* User bubble */
+  .msg-user {
+    align-self: flex-end;
+    background: var(--bg-user);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: var(--radius) var(--radius) 4px var(--radius);
+    padding: 12px 16px;
+    max-width: 80%;
+    font-size: 14.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* Agent bubble wrapper */
+  .msg-agent-wrap {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .agent-avatar {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    display: grid; place-items: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .msg-agent {
+    flex: 1;
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--text);
+    word-break: break-word;
+  }
+
+  .msg-agent p { margin: 0 0 12px; }
+  .msg-agent p:last-child { margin-bottom: 0; }
+
+  /* ── Self-check badge ────────────────────────────────────────────────────── */
+  .self-check-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(139,92,246,0.1);
+    border: 1px solid rgba(139,92,246,0.25);
+    font-size: 11px;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .self-check-badge:hover {
+    background: rgba(139,92,246,0.18);
+  }
+
+  .self-check-badge .chk-icon { font-size: 12px; }
+
+  /* ── Self-check detail panel ─────────────────────────────────────────────── */
+  .check-detail {
+    display: none;
+    margin-top: 8px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    background: rgba(139,92,246,0.06);
+    border: 1px solid rgba(139,92,246,0.15);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--text-dim);
+  }
+
+  .check-detail.open { display: block; }
+
+  .issue-row { display: flex; gap: 8px; margin-bottom: 4px; }
+  .issue-sev-high   { color: var(--red);    font-weight: 600; }
+  .issue-sev-medium { color: var(--yellow); font-weight: 600; }
+  .issue-sev-low    { color: var(--green);  font-weight: 600; }
+
+  /* ── Token warning banner ────────────────────────────────────────────────── */
+  .token-warn-banner {
+    display: none;
+    align-self: center;
+    width: 100%;
+    max-width: 740px;
+    padding: 0 20px;
+  }
+
+  .token-warn-banner.show { display: block; }
+
+  .token-warn-inner {
+    background: rgba(234,179,8,0.08);
+    border: 1px solid rgba(234,179,8,0.3);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: var(--yellow);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Thinking indicator ──────────────────────────────────────────────────── */
+  .thinking-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 0 20px;
+    animation: fadeUp 0.2s ease both;
+  }
+
+  .thinking-dots {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    padding: 14px 0 4px;
+  }
+
+  .thinking-dots span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: blink 1.2s ease infinite;
+  }
+
+  .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40%           { opacity: 1;   transform: scale(1);   }
+  }
+
+  /* ── Self-check spinner ──────────────────────────────────────────────────── */
+  .check-status {
+    display: none;
+    align-self: center;
+    width: 100%;
+    max-width: 740px;
+    padding: 0 20px;
+  }
+
+  .check-status.show { display: block; }
+
+  .check-status-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    background: rgba(139,92,246,0.06);
+    border: 1px solid rgba(139,92,246,0.15);
+    font-size: 12px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+  }
+
+  .spin {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(139,92,246,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Code blocks ─────────────────────────────────────────────────────────── */
+  .msg-agent pre {
+    margin: 12px 0;
+    border-radius: var(--radius-sm);
+    background: var(--bg-code) !important;
+    border: 1px solid var(--border);
+    overflow: auto;
+    position: relative;
+  }
+
+  .msg-agent pre code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 16px !important;
+    display: block;
+    line-height: 1.6;
+    background: transparent !important;
+  }
+
+  /* SELF-CHECK comment highlight */
+  .msg-agent pre code .hljs-comment {
+    color: rgba(139,92,246,0.85) !important;
+    font-style: italic;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .copy-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .copy-btn.copied { color: var(--green); }
+
+  /* Inline code */
+  .msg-agent code:not(pre code) {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--cyan);
+  }
+
+  /* ── Input area ──────────────────────────────────────────────────────────── */
+  .input-wrap {
+    padding: 16px 20px 20px;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .input-inner {
+    width: 100%;
+    max-width: 740px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* File pill */
+  #file-pill {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.25);
+    font-size: 12px;
+    color: var(--green);
+    align-self: flex-start;
+  }
+
+  #file-pill.show { display: flex; }
+
+  #file-pill button {
+    background: none;
+    border: none;
+    color: rgba(34,197,94,0.6);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.2s;
+  }
+
+  #file-pill button:hover { color: var(--red); }
+
+  /* Input box */
+  .input-box {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+  }
+
+  .input-box:focus-within { border-color: var(--border-focus); }
+
+  #chat-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 14.5px;
+    line-height: 1.5;
+    resize: none;
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  #chat-input::placeholder { color: var(--text-muted); }
+
+  .input-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-upload {
+    width: 34px; height: 34px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: grid; place-items: center;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+
+  .btn-upload:hover {
+    border-color: rgba(34,197,94,0.4);
+    color: var(--green);
+    background: rgba(34,197,94,0.06);
+  }
+
+  .btn-send {
+    width: 34px; height: 34px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: grid; place-items: center;
+    font-size: 16px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .btn-send:hover   { background: #7c3aed; transform: scale(1.04); }
+  .btn-send:active  { transform: scale(0.97); }
+  .btn-send:disabled { background: rgba(139,92,246,0.3); cursor: not-allowed; transform: none; }
+
+  #file-input { display: none; }
+
+  /* ── Welcome screen ──────────────────────────────────────────────────────── */
+  #welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px 20px 20px;
+    text-align: center;
+    flex: 1;
+  }
+
+  #welcome.hidden { display: none; }
+
+  .welcome-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    display: grid; place-items: center;
+    font-size: 26px;
+    box-shadow: 0 8px 32px rgba(139,92,246,0.25);
+  }
+
+  #welcome h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  #welcome p {
+    font-size: 14px;
+    color: var(--text-dim);
+    max-width: 340px;
+    line-height: 1.6;
+  }
+
+  .welcome-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 4px;
+  }
+
+  .tag {
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tag:hover {
+    border-color: rgba(139,92,246,0.4);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  /* ── Scrollbar for code ──────────────────────────────────────────────────── */
+  pre::-webkit-scrollbar       { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="header-left">
+    <div class="logo">🤖</div>
+    <span class="logo-text">Coding<span>Agent</span></span>
+  </div>
+  <div class="header-right">
+    <div id="skill-badge">
+      <span class="dot"></span>
+      <span id="skill-name">general</span>
+    </div>
+    <div id="token-counter">
+      <span id="token-text">0 / 4,096</span>
+      <div class="bar-track">
+        <div class="bar-fill" id="token-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <button class="btn-reset" id="btn-reset" title="New conversation">↺ New</button>
+  </div>
+</header>
+
+<!-- ── Chat area ─────────────────────────────────────────────────────────────── -->
+<div class="chat-wrap" id="chat-wrap">
+  <!-- Welcome -->
+  <div id="welcome">
+    <div class="welcome-icon">🤖</div>
+    <h1>Coding Agent</h1>
+    <p>Qwen3 Coder 30B with semantic skill routing, self-checking, and token monitoring.</p>
+    <div class="welcome-tags">
+      <span class="tag" onclick="fillInput('Review this code for bugs and security issues')">🔍 Code review</span>
+      <span class="tag" onclick="fillInput('Refactor this function to be more readable')">✨ Refactor</span>
+      <span class="tag" onclick="fillInput('Write unit tests for this module')">🧪 Tests</span>
+      <span class="tag" onclick="fillInput('Explain how this code works')">📖 Explain</span>
+      <span class="tag" onclick="fillInput('Optimize this for performance')">⚡ Optimize</span>
+      <span class="tag" onclick="fillInput('would you kindly analyze this script')">🧠 Deep analysis</span>
+    </div>
+  </div>
+
+  <!-- Messages injected here -->
+</div>
+
+<!-- Token warning banner (injected into chat-wrap dynamically) -->
+
+<!-- Self-check status (injected dynamically) -->
+
+<!-- ── Input ──────────────────────────────────────────────────────────────────── -->
+<div class="input-wrap">
+  <div class="input-inner">
+    <div id="file-pill">
+      <span>📄</span>
+      <span id="file-pill-name">file.py</span>
+      <button onclick="clearFile()" title="Remove file">×</button>
+    </div>
+    <div class="input-box">
+      <textarea
+        id="chat-input"
+        rows="1"
+        placeholder="Ask the coding agent anything… or upload a file with 📎"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <div class="input-actions">
+        <button class="btn-upload" onclick="document.getElementById('file-input').click()" title="Upload file">📎</button>
+        <button class="btn-send" id="btn-send" onclick="sendMessage()" title="Send (Enter)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <input type="file" id="file-input" onchange="handleFileUpload(this)">
+  </div>
+</div>
+
+<script>
+/* ── State ─────────────────────────────────────────────────────────────────── */
+let sessionId   = null;
+let uploadId    = null;
+let isStreaming = false;
+let currentAgentBubble   = null;
+let currentCheckDetail   = null;
+let totalIssuesFixed     = 0;
+let totalPassesRun       = 0;
+let checkingStatusEl     = null;
+
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
+function fillInput(text) {
+  document.getElementById('chat-input').value = text;
+  autoResize(document.getElementById('chat-input'));
+  document.getElementById('chat-input').focus();
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function scrollToBottom() {
+  const wrap = document.getElementById('chat-wrap');
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ── File upload ─────────────────────────────────────────────────────────── */
+async function handleFileUpload(input) {
+  if (!input.files.length) return;
+  const file = input.files[0];
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const res  = await fetch('/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    uploadId   = data.upload_id;
+
+    const pill = document.getElementById('file-pill');
+    document.getElementById('file-pill-name').textContent =
+      `${data.filename} (${data.lines} lines)`;
+    pill.classList.add('show');
+  } catch (e) {
+    console.error('Upload failed:', e);
+  }
+}
+
+function clearFile() {
+  uploadId = null;
+  document.getElementById('file-pill').classList.remove('show');
+  document.getElementById('file-input').value = '';
+}
+
+/* ── Token counter ───────────────────────────────────────────────────────── */
+function updateTokenCounter(current, max) {
+  const pct      = current / max * 100;
+  const text     = document.getElementById('token-text');
+  const bar      = document.getElementById('token-bar');
+  const counter  = document.getElementById('token-counter');
+
+  text.textContent = `${current.toLocaleString()} / ${max.toLocaleString()}`;
+  bar.style.width  = Math.min(pct, 100) + '%';
+
+  counter.classList.remove('warn', 'danger');
+  if (pct >= 100) counter.classList.add('danger');
+  else if (pct >= 80) counter.classList.add('warn');
+}
+
+/* ── Skill badge ─────────────────────────────────────────────────────────── */
+function updateSkillBadge(skill) {
+  const badge = document.getElementById('skill-badge');
+  const name  = document.getElementById('skill-name');
+  name.textContent = skill;
+  badge.style.animation = 'none';
+  badge.offsetHeight;
+  badge.style.animation = '';
+}
+
+/* ── UI: append messages ─────────────────────────────────────────────────── */
+function appendUserMessage(text) {
+  document.getElementById('welcome').classList.add('hidden');
+
+  const wrap = document.getElementById('chat-wrap');
+  const row  = document.createElement('div');
+  row.className = 'msg-row';
+  row.innerHTML = `<div class="msg-user">${escapeHtml(text)}</div>`;
+  wrap.appendChild(row);
+  scrollToBottom();
+}
+
+function appendThinking() {
+  const wrap = document.getElementById('chat-wrap');
+  const el   = document.createElement('div');
+  el.id = 'thinking-indicator';
+  el.className = 'msg-row thinking-row';
+  el.innerHTML = `
+    <div class="agent-avatar">🤖</div>
+    <div class="thinking-dots">
+      <span></span><span></span><span></span>
+    </div>`;
+  wrap.appendChild(el);
+  scrollToBottom();
+  return el;
+}
+
+function removeThinking() {
+  const el = document.getElementById('thinking-indicator');
+  if (el) el.remove();
+}
+
+function createAgentBubble() {
+  const wrap = document.getElementById('chat-wrap');
+  const row  = document.createElement('div');
+  row.className = 'msg-row';
+
+  row.innerHTML = `
+    <div class="msg-agent-wrap">
+      <div class="agent-avatar">🤖</div>
+      <div class="msg-agent" id="active-agent-bubble"></div>
+    </div>`;
+
+  wrap.appendChild(row);
+  currentAgentBubble = document.getElementById('active-agent-bubble');
+  scrollToBottom();
+  return row;
+}
+
+/* ── Self-check status indicator ─────────────────────────────────────────── */
+function showCheckStatus(passNum, maxPasses) {
+  removeCheckStatus();
+  const wrap = document.getElementById('chat-wrap');
+  const el   = document.createElement('div');
+  el.id = 'check-status-el';
+  el.className = 'check-status show';
+  el.innerHTML = `
+    <div class="check-status-inner">
+      <div class="spin"></div>
+      <span>Self-check pass ${passNum}/${maxPasses} — reviewing generated code…</span>
+    </div>`;
+  wrap.appendChild(el);
+  scrollToBottom();
+  checkingStatusEl = el;
+}
+
+function removeCheckStatus() {
+  const el = document.getElementById('check-status-el');
+  if (el) el.remove();
+  checkingStatusEl = null;
+}
+
+/* ── Token warning banner ────────────────────────────────────────────────── */
+function showTokenWarning(current, max) {
+  const existing = document.getElementById('token-warn-banner');
+  if (existing) return;
+
+  const wrap = document.getElementById('chat-wrap');
+  const el   = document.createElement('div');
+  el.id = 'token-warn-banner';
+  el.className = 'token-warn-banner show';
+  el.innerHTML = `
+    <div class="token-warn-inner">
+      ⚠️ Token usage above 80% (${current.toLocaleString()} / ${max.toLocaleString()}) —
+      summarizing history to free context space…
+    </div>`;
+  wrap.appendChild(el);
+  scrollToBottom();
+
+  // Auto-hide after 8 seconds
+  setTimeout(() => el.remove(), 8000);
+}
+
+/* ── Markdown-ish renderer ───────────────────────────────────────────────── */
+function renderResponse(raw) {
+  // Split on code fences
+  const parts = raw.split(/(```[\w]*\n[\s\S]*?```)/g);
+  let html = '';
+
+  for (const part of parts) {
+    if (part.startsWith('```')) {
+      const langMatch = part.match(/^```(\w*)\n/);
+      const lang      = langMatch ? langMatch[1] : '';
+      const code      = part.replace(/^```\w*\n/, '').replace(/```$/, '');
+      const escaped   = escapeHtml(code);
+
+      // Highlight if hljs knows the language
+      let highlighted;
+      try {
+        highlighted = lang
+          ? hljs.highlight(code, { language: lang, ignoreIllegals: true }).value
+          : hljs.highlightAuto(code).value;
+      } catch {
+        highlighted = escaped;
+      }
+
+      const copyId = 'copy_' + Math.random().toString(36).slice(2, 8);
+      html += `
+        <pre>
+          <div class="code-header">
+            <span>${lang || 'text'}</span>
+            <button class="copy-btn" id="${copyId}" onclick="copyCode(this, \`${escapeHtml(code)}\`)">Copy</button>
+          </div>
+          <code class="language-${lang}">${highlighted}</code>
+        </pre>`;
+    } else {
+      // Simple paragraph/inline rendering
+      let p = escapeHtml(part)
+        // Bold
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Italic
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Inline code
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // Paragraphs
+        .replace(/\n\n+/g, '</p><p>')
+        // Line breaks
+        .replace(/\n/g, '<br>');
+      html += `<p>${p}</p>`;
+    }
+  }
+
+  return html;
+}
+
+function copyCode(btn, code) {
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+/* ── Self-check badge builder ────────────────────────────────────────────── */
+function appendSelfCheckBadge(row, passes, issuesFixed, issues) {
+  const badgeId  = 'badge_' + Math.random().toString(36).slice(2, 8);
+  const detailId = 'detail_' + badgeId;
+
+  const icon  = issuesFixed > 0 ? '🔍' : '✅';
+  const label = issuesFixed > 0
+    ? `${passes} pass${passes > 1 ? 'es' : ''} · ${issuesFixed} fix${issuesFixed > 1 ? 'es' : ''}`
+    : `${passes} pass${passes > 1 ? 'es' : ''} · clean`;
+
+  let issueHtml = '';
+  if (issues && issues.length > 0) {
+    issueHtml = issues.map(i => `
+      <div class="issue-row">
+        <span class="issue-sev-${i.severity || 'low'}">[${(i.severity||'LOW').toUpperCase()}]</span>
+        <span>${escapeHtml(i.type || '')} — ${escapeHtml(i.suggestion || '')}</span>
+      </div>`).join('');
+  }
+
+  const badge = document.createElement('div');
+  badge.className = 'self-check-badge';
+  badge.id = badgeId;
+  badge.innerHTML = `<span class="chk-icon">${icon}</span> Self-check: ${label} ▾`;
+  badge.onclick = () => {
+    const d = document.getElementById(detailId);
+    d.classList.toggle('open');
+    badge.innerHTML = d.classList.contains('open')
+      ? `<span class="chk-icon">${icon}</span> Self-check: ${label} ▴`
+      : `<span class="chk-icon">${icon}</span> Self-check: ${label} ▾`;
+  };
+
+  const detail = document.createElement('div');
+  detail.className = 'check-detail';
+  detail.id = detailId;
+  detail.innerHTML = issueHtml || '<span style="color:var(--green)">✅ No issues found.</span>';
+
+  const agentWrap = row.querySelector('.msg-agent-wrap');
+  const msgAgent  = row.querySelector('.msg-agent');
+  agentWrap.appendChild(badge);
+  agentWrap.appendChild(detail);
+}
+
+/* ── Main send ───────────────────────────────────────────────────────────── */
+async function sendMessage() {
+  if (isStreaming) return;
+
+  const input   = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  isStreaming = true;
+  totalIssuesFixed = 0;
+  totalPassesRun   = 0;
+  const allIssues  = [];
+
+  document.getElementById('btn-send').disabled = true;
+  input.value = '';
+  autoResize(input);
+
+  appendUserMessage(message);
+  const thinkingEl = appendThinking();
+
+  // ── POST /chat ──────────────────────────────────────────────────────────
+  let sid;
+  try {
+    const body = {
+      message,
+      session_id: sessionId || undefined,
+      upload_id:  uploadId  || undefined,
+    };
+    const res  = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    sid = data.session_id;
+    if (!sessionId) sessionId = sid;
+  } catch (e) {
+    removeThinking();
+    appendError('Failed to reach server: ' + e.message);
+    resetStreaming();
+    return;
+  }
+
+  // ── Open SSE stream ─────────────────────────────────────────────────────
+  const es  = new EventSource(`/stream/${sid}`);
+  let   row = null;
+  let   rawBuffer = '';
+
+  // Thinking → agent bubble on first token
+  function ensureBubble() {
+    if (!row) {
+      removeThinking();
+      row = createAgentBubble();
+    }
+  }
+
+  // ── Token ─────────────────────────────────────────────────────────────
+  es.addEventListener('token', e => {
+    ensureBubble();
+    removeCheckStatus();
+    const d = JSON.parse(e.data);
+    rawBuffer += d.text;
+    currentAgentBubble.innerHTML = renderResponse(rawBuffer);
+    scrollToBottom();
+  });
+
+  // ── Skill update ──────────────────────────────────────────────────────
+  es.addEventListener('skill', e => {
+    const d = JSON.parse(e.data);
+    updateSkillBadge(d.skill);
+  });
+
+  // ── Self-check events ─────────────────────────────────────────────────
+  es.addEventListener('self_check_start', e => {
+    const d = JSON.parse(e.data);
+    totalPassesRun = d.pass;
+    showCheckStatus(d.pass, d.max);
+  });
+
+  es.addEventListener('self_check_issues', e => {
+    const d = JSON.parse(e.data);
+    if (d.issues) d.issues.forEach(i => allIssues.push(i));
+    totalIssuesFixed += (d.issues || []).length;
+  });
+
+  es.addEventListener('self_check_clean', e => {
+    removeCheckStatus();
+  });
+
+  es.addEventListener('self_check_max', e => {
+    removeCheckStatus();
+  });
+
+  // ── Token warning ─────────────────────────────────────────────────────
+  es.addEventListener('token_warning', e => {
+    const d = JSON.parse(e.data);
+    showTokenWarning(d.current, d.max);
+  });
+
+  es.addEventListener('token_count', e => {
+    const d = JSON.parse(e.data);
+    updateTokenCounter(d.current, d.max);
+  });
+
+  // ── Done ──────────────────────────────────────────────────────────────
+  es.addEventListener('done', e => {
+    const d = JSON.parse(e.data);
+    removeCheckStatus();
+    updateTokenCounter(d.token_count, d.max_tokens);
+
+    if (row && totalPassesRun > 0) {
+      appendSelfCheckBadge(row, totalPassesRun, totalIssuesFixed, allIssues);
+    }
+
+    es.close();
+    clearFile();
+    resetStreaming();
+  });
+
+  // ── Error ─────────────────────────────────────────────────────────────
+  es.addEventListener('error', e => {
+    removeThinking();
+    removeCheckStatus();
+    try {
+      const d = JSON.parse(e.data);
+      appendError(d.message);
+    } catch {
+      appendError('Stream error.');
+    }
+    es.close();
+    resetStreaming();
+  });
+
+  // ── Close (sentinel) ──────────────────────────────────────────────────
+  es.addEventListener('close', () => {
+    es.close();
+    resetStreaming();
+  });
+}
+
+function appendError(msg) {
+  const wrap = document.getElementById('chat-wrap');
+  const el   = document.createElement('div');
+  el.className = 'msg-row';
+  el.innerHTML = `<div style="
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: var(--red);
+    font-size: 13px;
+  ">⚠️ ${escapeHtml(msg)}</div>`;
+  wrap.appendChild(el);
+  scrollToBottom();
+}
+
+function resetStreaming() {
+  isStreaming = false;
+  document.getElementById('btn-send').disabled = false;
+  document.getElementById('chat-input').focus();
+}
+
+/* ── Reset session ───────────────────────────────────────────────────────── */
+document.getElementById('btn-reset').addEventListener('click', async () => {
+  if (sessionId) {
+    await fetch(`/reset/${sessionId}`, { method: 'POST' });
+  }
+  sessionId   = null;
+  uploadId    = null;
+  currentAgentBubble = null;
+
+  // Clear chat messages (keep welcome)
+  const wrap = document.getElementById('chat-wrap');
+  const welcome = document.getElementById('welcome');
+  wrap.innerHTML = '';
+  wrap.appendChild(welcome);
+  welcome.classList.remove('hidden');
+
+  updateTokenCounter(0, 4096);
+  updateSkillBadge('general');
+  clearFile();
+  document.getElementById('chat-input').focus();
+});
+
+/* ── Init ────────────────────────────────────────────────────────────────── */
+document.getElementById('chat-input').focus();
+</script>
+</body>
+</html>

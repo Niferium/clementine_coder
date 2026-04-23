@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border: 2px solid white;
+            background-color: black;
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+        }
+        
+        #startButton {
+            position: absolute;
+            top: 200px;
+            left: 300px;
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+        }
+        
+        #startButton:hover {
+            background-color: #45a049;
+        }
+        
+        #gameOverMessage {
+            position: absolute;
+            top: 200px;
+            left: 300px;
+            font-size: 36px;
+            color: white;
+            z-index: 2;
+            display: none;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 3;
+        }
+        
+        #scoreDisplay {
+            position: absolute;
+            top: 20px;
+            left: 300px;
+            font-size: 24px;
+            color: white;
+            z-index: 4;
+        }
+        
+        #winMessage {
+            position: absolute;
+            top: 200px;
+            left: 300px;
+            font-size: 36px;
+            color: green;
+            z-index: 5;
+            display: none;
+        }
+        
+        #tryAgainMessage {
+            position: absolute;
+            top: 250px;
+            left: 300px;
+            font-size: 24px;
+            color: red;
+            z-index: 6;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <button id="startButton">Start Game</button>
+        <div id="gameOverMessage">Game Over</div>
+        <div id="winMessage">You Win!</div>
+        <div id="tryAgainMessage">Try Again</div>
+        <div id="scoreDisplay">Player: 0 | AI: 0</div>
+        <div id="instructions">
+            Use W and S keys to move paddle<br>
+            First to 5 points wins
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const winMessage = document.getElementById('winMessage');
+        const tryAgainMessage = document.getElementById('tryAgainMessage');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const instructions = document.getElementById('instructions');
+
+        // Game state
+        let gameRunning = false;
+        let playerScore = 0;
+        let aiScore = 0;
+        const winningScore = 5;
+
+        // Game objects
+        const paddleWidth = 15;
+        const paddleHeight = 100;
+        const ballSize = 15;
+        const paddleSpeed = 8;
+        const aiSpeed = 6;
+
+        // Paddle positions
+        let playerY = canvas.height / 2 - paddleHeight / 2;
+        let aiY = canvas.height / 2 - paddleHeight / 2;
+        let ballX = canvas.width / 2;
+        let ballY = canvas.height / 2;
+        let ballSpeedX = 5;
+        let ballSpeedY = 5;
+
+        // Key states
+        const keys = {
+            w: false,
+            s: false
+        };
+
+        // Event listeners for keyboard
+        window.addEventListener('keydown', (e) => {
+            //SELF-CHECK [MEDIUM]: consistency — using lowercase comparison to avoid caps lock issues
+            if (e.key.toLowerCase() === 'w') {
+                keys.w = true;
+            }
+            // SELF-CHECK [MEDIUM]: consistency — using lowercase comparison to avoid caps lock issues
+            if (e.key.toLowerCase() === 's') {
+                keys.s = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'w' || e.key === 'W') {
+                keys.w = false;
+            }
+            if (e.key === 's' || e.key === 'S') {
+                keys.s = false;
+            }
+        });
+
+        // Start game when button is clicked
+        startButton.addEventListener('click', () => {
+            gameRunning = true;
+            startButton.style.display = 'none';
+            gameOverMessage.style.display = 'none';
+            winMessage.style.display = 'none';
+            tryAgainMessage.style.display = 'none';
+            resetBall();
+            gameLoop();
+        });
+
+        // Reset ball to center
+        function resetBall() {
+            ballX = canvas.width / 2;
+            ballY = canvas.height / 2;
+            ballSpeedX = (Math.random() > 0.5 ? 1 : -1) * 5;
+            ballSpeedY = (Math.random() * 4 - 2);
+        }
+
+        // Draw game elements
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw center line
+            ctx.strokeStyle = 'white';
+            ctx.beginPath();
+            ctx.dashedLine = true;
+            ctx.moveTo(canvas.width/2, 0);
+            ctx.lineTo(canvas.width/2, canvas.height);
+            ctx.stroke();
+
+            // Draw paddles
+            ctx.fillStyle = 'white';
+            ctx.fillRect(50, playerY, paddleWidth, paddleHeight);
+            ctx.fillRect(canvas.width - 50 - paddleWidth, aiY, paddleWidth, paddleHeight);
+
+            // Draw ball
+            ctx.fillRect(ballX, ballY, ballSize, ballSize);
+        }
+
+        // Update game state
+        function update() {
+            // Move player paddle
+            if (keys.w && playerY > 0) {
+                playerY -= paddleSpeed;
+            }
+            if (keys.s && playerY < canvas.height - paddleHeight) {
+                playerY += paddleSpeed;
+            }
+
+            // AI movement (simple tracking)
+            const aiCenter = aiY + paddleHeight / 2;
+            const ballCenter = ballY + ballSize / 2;
+            if (aiCenter < ballCenter - 30) {
+                aiY += aiSpeed;
+            } else if (aiCenter > ballCenter + 30) {
+                aiY -= aiSpeed;
+            }
+
+            // Keep AI paddle within bounds
+            if (aiY < 0) {
+                aiY = 0;
+            }
+            if (aiY > canvas.height - paddleHeight) {
+                aiY = canvas.height - paddleHeight;
+            }
+
+            // Move ball
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+
+            // Ball collision with top and bottom walls
+            if (ballY <= 0 || ballY >= canvas.height - ballSize) {
+                ballSpeedY = -ballSpeedY;
+            }
+
+            // Ball collision with paddles
+            if (
+                ballX <= 50 + paddleWidth &&
+                ballX + ballSize >= 50 &&
+                ballY + ballSize >= playerY &&
+                ballY <= playerY + paddleHeight
+            ) {
+                ballSpeedX = Math.abs(ballSpeedX);
+                // Adjust ball angle based on paddle position
+                const hitPosition = (ballY + ballSize/2 - playerY) / paddleHeight;
+                ballSpeedY = (hitPosition - 0.5) * 10;
+            }
+
+            if (
+                ballX + ballSize >= canvas.width - 50 - paddleWidth &&
+                ballX <= canvas.width - 50 &&
+                ballY + ballSize >= aiY &&
+                ballY <= aiY + paddleHeight
+            ) {
+                ballSpeedX = -Math.abs(ballSpeedX);
+                // Adjust ball angle based on paddle position
+                const hitPosition = (ballY + ballSize/2 - aiY) / paddleHeight;
+                ballSpeedY = (hitPosition - 0.5) * 10;
+            }
+
+            // Ball out of bounds (scoring)
+            if (ballX < 0) {
+                aiScore++;
+                updateScoreDisplay();
+                resetBall();
+            }
+            if (ballX > canvas.width) {
+                playerScore++;
+                updateScoreDisplay();
+                resetBall();
+            }
+
+            // Check for winner
+            if (playerScore >= winningScore) {
+                gameRunning = false;
+                winMessage.style.display = 'block';
+            } else if (aiScore >= winningScore) {
+                gameRunning = false;
+                tryAgainMessage.style.display = 'block';
+            }
+        }
+
+        // Update score display
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Player: ${playerScore} | AI: ${aiScore}`;
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>

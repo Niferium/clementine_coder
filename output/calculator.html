@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            margin-top: 50px;
+        }
+        #calculator {
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f9f9f9;
+            borderRadius: 5px;
+        }
+        #display {
+            width: 100%;
+            height: 40px;
+            font-size: 18px;
+            text-align: right;
+            padding: 5px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+        }
+        #buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+        }
+        button {
+            height: 40px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div id="calculator">
+        <input type="text" id="display" readonly>
+        <div id="buttons">
+            <button onclick="clearAll()">C</button>
+            <button onclick="deleteLast()">DEL</button>
+            <button onclick="appendToDisplay('(')"> ( </button>
+            <button onclick="appendToDisplay('/')"> / </button>
+            <button onclick="appendToDisplay('7')">7</button>
+            <button onclick="appendToDisplay('8')">8</button>
+            <button onclick="appendToDisplay('9')">9</button>
+            <button onclick="appendToDisplay('*')">x</button>
+            <button onclick="appendToDisplay('4')">4</button>
+            <button onclick="appendToDisplay('5')">5</button>
+            <button onclick="appendToDisplay('6')">6</button>
+            <button onclick="appendToDisplay('-')">-</button>
+    <button onclick="appendToDisplay('1')">1</button>
+    <button onclick="appendToDisplay('2')">2</button>
+    <button onclick="appendToDisplay('3')">3</button>
+    <button onclick="appendToDisplay('+')">+</button>
+    <button onclick="appendToDisplay('0')">0</button>
+    <button onclick="appendToDisplay('.')">.</button>
+    <button onclick="calculateResult()">=</button>
+        </div>
+    </div>
+
+    <script>
+        let display = document.getElementById('display');
+        let currentInput = '';
+
+        function appendToDisplay(value) {
+            currentInput += value;
+            display.value = currentInput;
+        }
+
+        function clearAll() {
+            currentInput = '';
+            display.value = '';
+        }
+
+        function deleteLast() {
+            currentInput = currentInput.slice(0, -1);
+            display.value = currentInput;
+        }
+
+        // Replaced eval() with safer alternative using eval() replacement approach
+        // This uses a safer approach by validating input and only allowing numbers, operators, and parentheses
+        function calculateResult() {
+            try {
+                // Validate input to only allow numbers, operators, and parentheses
+                if (!/^[\d\s\+\-\*\/\(\)\.]*$/.test(currentInput)) {
+                    display.value = 'Error';
+                    return;
+                }
+                // Use Function constructor instead of eval for safer evaluation
+                let result = new Function('return ' + currentInput)();
+                display.value = result;
+                currentInput = result.toString();
+            } catch (error) {
+                display.value = 'Error';
+            }
+        }
+    </script>
+</body>
+</html>
