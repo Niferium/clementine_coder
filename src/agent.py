@@ -33,7 +33,7 @@ from src import token_monitor
 
 MAIN_MODEL    = "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit"
 ROUTER_MODEL  = "mlx-community/Qwen1.5-1.8B-Chat-4bit"
-MAX_TOKENS    = 32000     # Max tokens before refusing to generate (includes history + response)
+MAX_TOKENS    = 4028     # Max tokens before refusing to generate (includes history + response)
 ROUTER_TOKENS = 128      # Router only needs a short JSON blob
 
 
