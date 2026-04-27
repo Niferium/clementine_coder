@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Qwen Coder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161d;
+    --surface2: #1a1e27;
+    --border: #252a36;
+    --accent: #7eeae4;
+    --accent2: #f7c873;
+    --accent3: #c084fc;
+    --text: #cdd6f4;
+    --text-dim: #6c7086;
+    --text-muted: #45475a;
+    --danger: #f38ba8;
+    --green: #a6e3a1;
+    --radius: 10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: 100vh;
+    height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .brand {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+
+  .brand-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .model-status {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  .status-dot.ready { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.loading {
+    background: var(--accent2);
+    animation: pulse 1s infinite;
+  }
+  .status-dot.error { background: var(--danger); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .status-label { color: var(--text-dim); }
+  .status-model { color: var(--text); font-size: 10px; margin-top: 2px; word-break: break-all; }
+
+  .sidebar-section {
+    padding: 16px 20px 8px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .model-list {
+    padding: 0 12px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .model-item {
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-dim);
+    transition: all 0.15s;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+  }
+
+  .model-item:hover { background: var(--surface2); color: var(--text); }
+  .model-item.active { background: var(--surface2); color: var(--accent); border-color: var(--border); }
+
+  .model-item .model-size {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .btn-new-chat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    margin: 8px 12px;
+    width: calc(100% - 24px);
+    border-radius: var(--radius);
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-new-chat:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Main area ── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .topbar-model-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--accent);
+  }
+
+  /* ── Messages ── */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    scroll-behavior: smooth;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .msg {
+    display: flex;
+    gap: 14px;
+    max-width: 900px;
+    animation: fadeUp 0.2s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+  }
+
+  .msg.user .msg-avatar { background: var(--accent3); color: #fff; }
+  .msg.assistant .msg-avatar { background: var(--accent); color: var(--bg); }
+
+  .msg-body { flex: 1; min-width: 0; }
+
+  .msg-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .msg.user .msg-meta { text-align: right; }
+
+  .msg-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    line-height: 1.7;
+    word-break: break-word;
+  }
+
+  .msg.user .msg-content {
+    background: var(--surface2);
+    border-color: var(--accent3);
+    border-opacity: 0.3;
+  }
+
+  /* Code blocks */
+  .code-block {
+    margin: 12px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .code-block pre {
+    margin: 0;
+    overflow-x: auto;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #0a0c10;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+
+  .code-lang {
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .code-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-code-action {
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-size: 10px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-code-action:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-code-action.download-btn { border-color: var(--accent2); color: var(--accent2); }
+  .btn-code-action.download-btn:hover { background: rgba(247,200,115,0.1); }
+
+  .msg-content pre code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    display: block;
+    padding: 14px;
+    overflow-x: auto;
+    background: #0d0f14 !important;
+  }
+
+  .msg-content p { margin-bottom: 8px; }
+  .msg-content p:last-child { margin-bottom: 0; }
+
+  /* Inline code */
+  .msg-content code:not(pre code) {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--accent3);
+  }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 0;
+  }
+
+  .typing-dot {
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-6px); }
+  }
+
+  /* ── Input area ── */
+  .input-area {
+    padding: 16px 24px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .input-wrap {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+  }
+
+  .input-wrap:focus-within { border-color: var(--accent); }
+
+  #user-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    resize: none;
+    max-height: 200px;
+    line-height: 1.5;
+    min-height: 20px;
+  }
+
+  #user-input::placeholder { color: var(--text-muted); }
+
+  .btn-send {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .btn-send:hover { background: #9ff5ef; transform: scale(1.05); }
+  .btn-send:disabled { background: var(--border); color: var(--text-muted); transform: none; cursor: default; }
+
+  .input-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    text-align: right;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--text-dim);
+    padding: 40px;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    opacity: 0.4;
+    font-family: 'Syne', sans-serif;
+  }
+
+  .empty-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    text-align: center;
+  }
+
+  .empty-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.7;
+  }
+
+  .quick-prompts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    max-width: 520px;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .quick-prompt {
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 11px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    font-family: inherit;
+    line-height: 1.5;
+  }
+
+  .quick-prompt:hover { border-color: var(--accent); color: var(--text); }
+  .quick-prompt strong { display: block; color: var(--text); margin-bottom: 2px; font-size: 11px; }
+
+  /* Download notification */
+  .download-toast {
+    position: fixed;
+    bottom: 100px; right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--accent2);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--accent2);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .download-toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Scrollbar */
+  .model-list::-webkit-scrollbar { width: 3px; }
+  .model-list::-webkit-scrollbar-track { background: transparent; }
+  .model-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+  /* Responsive tweak */
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-title">⬡ Qwen Coder</div>
+      <div class="brand-sub">Local AI · MLX · Apple Silicon</div>
+    </div>
+
+    <div class="model-status">
+      <div class="status-dot loading" id="status-dot"></div>
+      <div>
+        <div class="status-label" id="status-label">Initializing…</div>
+        <div class="status-model" id="status-model"></div>
+      </div>
+    </div>
+
+    <button class="btn-new-chat" onclick="newChat()">
+      <span>＋</span> New chat
+    </button>
+
+    <div class="sidebar-section">Models</div>
+    <div class="model-list" id="model-list">
+      <div class="model-item active" data-model="mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit" onclick="selectModel(this)">
+        Qwen3-Coder-30B-A3B-Instruct-4bit
+        <div class="model-size">~17.2 GB · Recommended</div>
+      </div>
+      <!-- <div class="model-item" data-model="Qwen/Qwen2.5-Coder-3B-Instruct" onclick="selectModel(this)">
+        Qwen2.5-Coder-3B
+        <div class="model-size">~6 GB · Fast</div>
+      </div>
+      <div class="model-item" data-model="Qwen/Qwen2.5-Coder-1.5B-Instruct" onclick="selectModel(this)">
+        Qwen2.5-Coder-1.5B
+        <div class="model-size">~3 GB · Lightweight</div>
+      </div>
+      <div class="model-item" data-model="Qwen/Qwen2.5-Coder-0.5B-Instruct" onclick="selectModel(this)">
+        Qwen2.5-Coder-0.5B
+        <div class="model-size">~1 GB · Minimal</div>
+      </div> -->
+    </div>
+
+    <div class="sidebar-footer">
+      mlx-lm · Mac M2 · Running locally
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-model-badge" id="topbar-model">—</span>
+        <span id="topbar-status" style="color:var(--text-muted);font-size:11px;">Loading model…</span>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">{ }</div>
+        <div class="empty-title">Ask me to write code</div>
+        <div class="empty-sub">I generate code in any language and automatically provide downloadable files with the correct extension.</div>
+        <div class="quick-prompts">
+          <button class="quick-prompt" onclick="usePrompt('Write a REST API in Python using FastAPI with CRUD operations for a todo list')">
+            <strong>Python API</strong>FastAPI REST + CRUD example
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('Write a Kotlin data class for a User with serialization and validation')">
+            <strong>Kotlin</strong>Data class + serialization
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('Write an HTML page with a dark-themed landing page and CSS animations')">
+            <strong>HTML/CSS</strong>Dark landing page
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('Write a Swift struct for networking with async/await URLSession')">
+            <strong>Swift</strong>Async networking struct
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea id="user-input" placeholder="Ask for code in any language…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="btn-send" id="send-btn" onclick="sendMessage()">↑</button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+    </div>
+  </main>
+</div>
+
+<div class="download-toast" id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let messages = [];
+let generating = false;
+let currentModel = 'Qwen/Qwen2.5-Coder-7B-Instruct';
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function usePrompt(text) {
+  document.getElementById('user-input').value = text;
+  autoResize(document.getElementById('user-input'));
+  sendMessage();
+}
+
+function newChat() {
+  messages = [];
+  renderEmptyState();
+}
+
+function renderEmptyState() {
+  document.getElementById('messages').innerHTML = `<div class="empty-state" id="empty-state">
+    <div class="empty-icon">{ }</div>
+    <div class="empty-title">Ask me to write code</div>
+    <div class="empty-sub">I generate code in any language and automatically provide downloadable files with the correct extension.</div>
+    <div class="quick-prompts">
+      <button class="quick-prompt" onclick="usePrompt('Write a REST API in Python using FastAPI with CRUD operations for a todo list')">
+        <strong>Python API</strong>FastAPI REST + CRUD
+      </button>
+      <button class="quick-prompt" onclick="usePrompt('Write a Kotlin data class for a User with serialization and validation')">
+        <strong>Kotlin</strong>Data class + serialization
+      </button>
+      <button class="quick-prompt" onclick="usePrompt('Write an HTML page with a dark-themed landing page and CSS animations')">
+        <strong>HTML/CSS</strong>Dark landing page
+      </button>
+      <button class="quick-prompt" onclick="usePrompt('Write a Swift struct for networking with async/await URLSession')">
+        <strong>Swift</strong>Async networking struct
+      </button>
+    </div>
+  </div>`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Health polling ────────────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    const dot = document.getElementById('status-dot');
+    const label = document.getElementById('status-label');
+    const modelEl = document.getElementById('status-model');
+    const topbarStatus = document.getElementById('topbar-status');
+    const topbarModel = document.getElementById('topbar-model');
+
+    dot.className = 'status-dot ' + (data.model_status || '');
+    const modelShort = (data.model || '').split('/').pop() || '—';
+    topbarModel.textContent = modelShort;
+
+    if (data.model_status === 'ready') {
+      label.textContent = 'Model ready';
+      modelEl.textContent = modelShort;
+      topbarStatus.textContent = 'Ready';
+      topbarStatus.style.color = 'var(--green)';
+      document.getElementById('send-btn').disabled = false;
+    } else if (data.model_status === 'loading') {
+      label.textContent = 'Loading model…';
+      modelEl.textContent = data.model || '';
+      topbarStatus.textContent = 'Loading model…';
+      topbarStatus.style.color = 'var(--accent2)';
+      document.getElementById('send-btn').disabled = true;
+      setTimeout(pollStatus, 3000);
+    } else if (data.model_status === 'error') {
+      label.textContent = 'Error';
+      modelEl.textContent = data.error || '';
+      topbarStatus.textContent = 'Error – check console';
+      topbarStatus.style.color = 'var(--danger)';
+    } else {
+      label.textContent = 'Not loaded';
+      setTimeout(pollStatus, 3000);
+    }
+  } catch (e) {
+    setTimeout(pollStatus, 5000);
+  }
+}
+
+// ── Model selection ───────────────────────────────────────────────────────────
+async function selectModel(el) {
+  document.querySelectorAll('.model-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  currentModel = el.dataset.model;
+  document.getElementById('status-dot').className = 'status-dot loading';
+  document.getElementById('status-label').textContent = 'Loading…';
+  document.getElementById('send-btn').disabled = true;
+  await fetch('/api/load-model', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ model: currentModel })
+  });
+  setTimeout(pollStatus, 3000);
+}
+
+// ── HTML helpers ──────────────────────────────────────────────────────────────
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// For HTML attribute values — also escapes quotes
+function escapeAttr(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function renderMarkdown(text) {
+  // Step 1: Extract code blocks into placeholders so paragraph/newline
+  // processing never touches their contents or the generated HTML.
+  const codeBlocks = [];
+  text = text.replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, lang, code) => {
+    lang = (lang || '').toLowerCase().trim();
+    const displayLang = lang || 'code';
+    const rawCode = code.trim();
+    const highlighted = lang && hljs.getLanguage(lang)
+      ? hljs.highlight(rawCode, { language: lang }).value
+      : escapeHtml(rawCode);
+    const html = (
+      `<div class="code-block">` +
+        `<div class="code-header">` +
+          `<span class="code-lang">${escapeHtml(displayLang)}</span>` +
+          `<div class="code-actions">` +
+            `<button class="btn-code-action copy-btn">copy</button>` +
+          `</div>` +
+        `</div>` +
+        `<pre><code class="hljs language-${lang}" data-raw="${escapeAttr(rawCode)}">${highlighted}</code></pre>` +
+      `</div>`
+    );
+    const placeholder = ` CODE${codeBlocks.length} `;
+    codeBlocks.push(html);
+    return placeholder;
+  });
+
+  // Step 2: Process prose — inline code, bold, paragraphs/newlines
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  text = text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+
+  // Step 3: Restore code blocks (placeholders are never touched by prose rules)
+  text = text.replace(/ CODE(\d+) /g, (_, i) => codeBlocks[+i]);
+  return text;
+}
+
+// ── Copy handler (event delegation — survives DOM rebuilds) ───────────────────
+document.addEventListener('click', function (e) {
+  // Copy button
+  if (e.target.classList.contains('copy-btn')) {
+    const btn = e.target;
+    const block = btn.closest('.code-block');
+    if (!block) return;
+    const codeEl = block.querySelector('code');
+    if (!codeEl) return;
+    // Use data-raw (original source) not textContent (which comes from hljs spans)
+    const text = codeEl.dataset.raw || codeEl.textContent;
+
+    const finish = () => {
+      btn.textContent = '✓ copied!';
+      btn.style.color = 'var(--green)';
+      showToast('Code copied to clipboard');
+      setTimeout(() => {
+        btn.textContent = 'copy';
+        btn.style.color = '';
+      }, 2000);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(finish).catch(() => fallbackCopy(text, finish));
+    } else {
+      fallbackCopy(text, finish);
+    }
+    return;
+  }
+});
+
+function fallbackCopy(text, callback) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) { console.warn('copy failed', e); }
+  document.body.removeChild(ta);
+  callback();
+}
+
+// ── Download file ─────────────────────────────────────────────────────────────
+async function downloadFile(fileId, btn) {
+  const origText = btn.textContent;
+  btn.textContent = '↓ …';
+  const a = document.createElement('a');
+  a.href = `/api/download/${encodeURIComponent(fileId)}`;
+  a.download = fileId;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  btn.textContent = '✓ saved';
+  showToast(`Saved: ${fileId}`);
+  setTimeout(() => { btn.textContent = origText; }, 3000);
+}
+
+// ── Attach download buttons (called once, after streaming ends) ───────────────
+function attachFileButtons(msgEl, files) {
+  if (!files || files.length === 0) return;
+  const blocks = [...msgEl.querySelectorAll('.code-block')];
+  files.forEach((f, i) => {
+    const block =
+      blocks.find(b => b.querySelector('.code-lang')?.textContent.toLowerCase() === f.language)
+      || blocks[i]
+      || blocks[0];
+    if (!block) return;
+    const actions = block.querySelector('.code-actions');
+    if (!actions || actions.querySelector('.download-btn')) return; // no duplicates
+    const btn = document.createElement('button');
+    btn.className = 'btn-code-action download-btn';
+    btn.textContent = `↓ .${f.extension}`;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      downloadFile(f.file_id, btn);
+    };
+    actions.appendChild(btn);
+  });
+}
+
+// ── Message rendering ─────────────────────────────────────────────────────────
+function addMessage(role, content, files = []) {
+  document.getElementById('empty-state')?.remove();
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  div.innerHTML = `
+    <div class="msg-avatar">${role === 'user' ? 'U' : 'Q'}</div>
+    <div class="msg-body">
+      <div class="msg-meta">${role === 'user' ? 'You' : 'Qwen Coder'} · ${time}</div>
+      <div class="msg-content">${role === 'user' ? `<p>${escapeHtml(content)}</p>` : renderMarkdown(content)}</div>
+    </div>`;
+  container.appendChild(div);
+  if (files.length > 0) attachFileButtons(div.querySelector('.msg-content'), files);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function addTypingIndicator() {
+  document.getElementById('empty-state')?.remove();
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  div.id = 'typing-msg';
+  div.innerHTML = `
+    <div class="msg-avatar">Q</div>
+    <div class="msg-body">
+      <div class="msg-meta">Qwen Coder · thinking</div>
+      <div class="msg-content"><div class="typing-indicator">
+        <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+      </div></div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+// ── Send ──────────────────────────────────────────────────────────────────────
+async function sendMessage() {
+  if (generating) return;
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  generating = true;
+  document.getElementById('send-btn').disabled = true;
+
+  messages.push({ role: 'user', content: text });
+  addMessage('user', text);
+  const typingEl = addTypingIndicator();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, stream: true })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let files = [];
+    let msgContentEl = null;  // reference to .msg-content div — updated in place
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value).split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.delta) {
+            fullText += data.delta;
+            if (!msgContentEl) {
+              // First chunk: replace typing indicator with real message div
+              typingEl.remove();
+              const assistantDiv = addMessage('assistant', fullText);
+              msgContentEl = assistantDiv.querySelector('.msg-content');
+            } else {
+              // Subsequent chunks: update innerHTML of the content div only
+              // Download buttons are NOT in .msg-content yet (added after streaming)
+              // so re-rendering here is safe.
+              msgContentEl.innerHTML = renderMarkdown(fullText);
+            }
+            document.getElementById('messages').scrollTop = 99999;
+          }
+          if (data.done) {
+            files = data.files || [];
+          }
+        } catch {}
+      }
+    }
+
+    // Streaming done — now attach download buttons once, to the final DOM
+    if (msgContentEl && files.length > 0) {
+      attachFileButtons(msgContentEl, files);
+      showToast(files.length === 1
+        ? `Code ready — click ↓ .${files[0].extension} to download`
+        : `${files.length} code files ready`);
+    }
+
+    messages.push({ role: 'assistant', content: fullText });
+
+  } catch (e) {
+    typingEl.remove();
+    addMessage('assistant', `Error: ${e.message}`);
+  } finally {
+    generating = false;
+    document.getElementById('send-btn').disabled = false;
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+pollStatus();
+</script>
+</body>
+</html>

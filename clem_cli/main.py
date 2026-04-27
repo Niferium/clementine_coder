@@ -8,6 +8,7 @@ import src.prompts.sys_prompt as sys_prompt
 from mlx_lm import load, generate
 from mlx_lm.sample_utils import make_sampler, make_logits_processors
 
+#CLI version 
 class Main:
     def __init__(self):
         self.logger = Logger()

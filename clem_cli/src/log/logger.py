@@ -155,3 +155,18 @@ class Logger:
             self.console.print(f"""[orange3]{code_block}[/orange3]""")
     
         return code_blocks
+    
+    def log_startup(self, main_model: str, router_model: str, port: int):
+        """Log agent startup config as a summary table."""
+        table = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
+        table.add_column(style="dim", width=16)
+        table.add_column()
+        table.add_row("Main Model",   f"[bold blue]{main_model}[/bold blue]")
+        table.add_row("Router Model", f"[bold cyan]{router_model}[/bold cyan]")
+        table.add_row("Flask Port",   f"[bold white]http://localhost:{port}[/bold white]")
+        table.add_row("Terminal",     "[dim]Log-only mode — UI at Flask URL above[/dim]")
+        self.console.print(Panel(
+            table,
+            title="[bold white]🚀 Agent Starting[/bold white]",
+            border_style="bright_black"
+        ))
