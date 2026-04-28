@@ -877,10 +877,10 @@ function addMessage(role, content, files = []) {
   div.className = `msg ${role}`;
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   div.innerHTML = `
-    <div class="msg-avatar">${role === 'user' ? 'U' : 'Q'}</div>
+    <div class="msg-avatar">${role === 'user' ? 'U' : 'C'}</div>
     <div class="msg-body">
       <div class="msg-meta">${role === 'user' ? 'You' : 'Clementine Coder'} · ${time}</div>
-      <div class="msg-content">${role === 'user' ? `<p>${escapeHtml(content)}</p>` : renderMarkdown(content)}</div>
+      <div class="msg-content">${role === 'user' ? `<p style="white-space: pre-wrap">${escapeHtml(content)}</p>` : renderMarkdown(content)}</div>
     </div>`;
   container.appendChild(div);
   if (files.length > 0) attachFileButtons(div.querySelector('.msg-content'), files);
@@ -895,7 +895,7 @@ function addTypingIndicator() {
   div.className = 'msg assistant';
   div.id = 'typing-msg';
   div.innerHTML = `
-    <div class="msg-avatar">Q</div>
+    <div class="msg-avatar">C</div>
     <div class="msg-body">
       <div class="msg-meta">Clementine · thinking</div>
       <div class="msg-content"><div class="typing-indicator">
