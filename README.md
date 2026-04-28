@@ -8,7 +8,8 @@ Clementine Coder is an AI coding assistant that can be locally deployed designed
 The command-line interface version of Clementine that you can interact with
 
 # Project Structure
-```clem_cli/
+```
+clem_cli/
 ├──output (# location of created outputs)
 ├── src/
 │ ├── log
@@ -23,7 +24,8 @@ The command-line interface version of Clementine that you can interact with
 The web-based chat interface that provides a clean conversational UI coding experience.
 
 # Project Structure
-```clem_chat/
+```
+clem_chat/
 ├──output (# location of created outputs)
 ├── src/
 │ ├── log
@@ -43,7 +45,8 @@ The experimental version that provides the following
 - basic multi-agent (from low model then pass to coder if it detects it needs coder)
 
 # Project Structure
-```clem_experimental/
+```
+clem_experimental/
 ├──output (# location of created outputs)
 ├── src/
 │ ├── agent.py
