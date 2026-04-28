@@ -72,3 +72,16 @@ clem_experimental/
 
 #### Install dependencies
     pip install -r requirements.txt
+
+### Test Structure
+
+Tests are organized in `test` directory with files like:
+- `test_run.py`
+- `test_main.py`
+- `test_app.py`
+
+open your cli in any of the folder then just run ``pytest``
+
+## License
+
+MIT
