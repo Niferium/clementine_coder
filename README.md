@@ -23,7 +23,7 @@ clem_cli/
 ### 💬 Clementine Chat
 The web-based chat interface that provides a clean conversational UI coding experience.
 
-# Project Structure
+#### Project Structure
 ```
 clem_chat/
 ├──output (# location of created outputs)
@@ -44,7 +44,7 @@ The experimental version that provides the following
 - semantic searching for multi-agent role
 - basic multi-agent (from low model then pass to coder if it detects it needs coder)
 
-# Project Structure
+#### Project Structure
 ```
 clem_experimental/
 ├──output (# location of created outputs)
@@ -63,12 +63,12 @@ clem_experimental/
 ```
 
 
-## Requirements
+### Requirements
 * Mac machines with big memory
 
-# Create and use virtual env:
+#### Create and use virtual env:
     python -m venv <name_env>
     source <name_env>/bin/activate
 
-# Install dependencies
+#### Install dependencies
     pip install -r requirements.txt
