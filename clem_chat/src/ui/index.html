@@ -550,13 +550,13 @@
       <span>＋</span> New chat
     </button>
 
-    <div class="sidebar-section">Models</div>
+    <!-- <div class="sidebar-section">Models</div>
     <div class="model-list" id="model-list">
       <div class="model-item active" data-model="mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit" onclick="selectModel(this)">
         Qwen3-Coder-30B-A3B-Instruct-4bit
         <div class="model-size">~17.2 GB · Recommended</div>
       </div>
-      <!-- <div class="model-item" data-model="Qwen/Qwen2.5-Coder-3B-Instruct" onclick="selectModel(this)">
+      <div class="model-item" data-model="Qwen/Qwen2.5-Coder-3B-Instruct" onclick="selectModel(this)">
         Qwen2.5-Coder-3B
         <div class="model-size">~6 GB · Fast</div>
       </div>
@@ -567,11 +567,11 @@
       <div class="model-item" data-model="Qwen/Qwen2.5-Coder-0.5B-Instruct" onclick="selectModel(this)">
         Qwen2.5-Coder-0.5B
         <div class="model-size">~1 GB · Minimal</div>
-      </div> -->
-    </div>
+      </div>
+    </div> -->
 
     <div class="sidebar-footer">
-      mlx-lm · Mac M2 · Running locally
+      mlx-lm · Running locally
     </div>
   </aside>
 
@@ -588,7 +588,7 @@
       <div class="empty-state" id="empty-state">
         <div class="empty-icon">{ }</div>
         <div class="empty-title">Ask me to write code</div>
-        <div class="empty-sub">I generate code in any language and automatically provide downloadable files with the correct extension.</div>
+        <div class="empty-sub">I generate code in any language</div>
         <div class="quick-prompts">
           <button class="quick-prompt" onclick="usePrompt('Write a REST API in Python using FastAPI with CRUD operations for a todo list')">
             <strong>Python API</strong>FastAPI REST + CRUD example
@@ -601,6 +601,12 @@
           </button>
           <button class="quick-prompt" onclick="usePrompt('Write a Swift struct for networking with async/await URLSession')">
             <strong>Swift</strong>Async networking struct
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('create me a pong game using html, add start button, ai opponent, wasd and arrow key controls, score board, win message when score reaches 5')">
+            <strong>Create Pong Game</strong>Pong game (1972) Vibed
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('create me a snake game in html, add start button, if the user loose, add dialog then reset button, let scores be tracked then let high score save locally, beautify the UI as much as possible')">
+            <strong>Create Snake Game</strong>Snake  game (1976) Vibed
           </button>
         </div>
       </div>
@@ -622,7 +628,7 @@
 // ── State ─────────────────────────────────────────────────────────────────────
 let messages = [];
 let generating = false;
-let currentModel = 'Qwen/Qwen2.5-Coder-7B-Instruct';
+// let currentModel = 'Qwen/Qwen2.5-Coder-7B-Instruct';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function autoResize(el) {
@@ -873,7 +879,7 @@ function addMessage(role, content, files = []) {
   div.innerHTML = `
     <div class="msg-avatar">${role === 'user' ? 'U' : 'Q'}</div>
     <div class="msg-body">
-      <div class="msg-meta">${role === 'user' ? 'You' : 'Qwen Coder'} · ${time}</div>
+      <div class="msg-meta">${role === 'user' ? 'You' : 'Clementine Coder'} · ${time}</div>
       <div class="msg-content">${role === 'user' ? `<p>${escapeHtml(content)}</p>` : renderMarkdown(content)}</div>
     </div>`;
   container.appendChild(div);
@@ -891,7 +897,7 @@ function addTypingIndicator() {
   div.innerHTML = `
     <div class="msg-avatar">Q</div>
     <div class="msg-body">
-      <div class="msg-meta">Qwen Coder · thinking</div>
+      <div class="msg-meta">Clementine · thinking</div>
       <div class="msg-content"><div class="typing-indicator">
         <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
       </div></div>
