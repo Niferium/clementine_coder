@@ -7,7 +7,7 @@ Clementine Coder is an AI coding assistant that can be locally deployed designed
 ### 🎯 Clementine CLI
 The command-line interface version of Clementine that you can interact with
 
-# Project Structure
+#### Project Structure
 ```
 clem_cli/
 ├──output (# location of created outputs)
