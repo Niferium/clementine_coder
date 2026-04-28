@@ -29,8 +29,8 @@ from flask import (
     stream_with_context,
 )
 
-from src.agent  import Agent
-from src.logger import Logger
+from clem_experimental.src.agent  import Agent
+from clem_experimental.src.logger import Logger
 
 
 def create_app(agent: Agent, logger: Logger) -> Flask:
@@ -240,7 +240,7 @@ def create_app(agent: Agent, logger: Logger) -> Flask:
                 "skill":       str
             }
         """
-        from src.agent import MAX_TOKENS
+        from clem_experimental.src.agent import MAX_TOKENS
 
         session     = agent.get_session(session_id)
         token_count = agent.get_token_count(session_id)

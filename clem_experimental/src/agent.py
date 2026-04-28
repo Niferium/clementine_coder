@@ -22,11 +22,11 @@ from pathlib import Path
 import mlx.core as mx
 from mlx_lm import load, generate
 
-from src.logger       import Logger
-from src.skill_parser import parse_skills, generate_system_prompt
-from src.router       import route_skill
-from src.self_checker import run_self_check_loop
-from src import token_monitor
+from clem_experimental.src.logger       import Logger
+from clem_experimental.src.skill_parser import parse_skills, generate_system_prompt
+from clem_experimental.src.router       import route_skill
+from clem_experimental.src.self_checker import run_self_check_loop
+from clem_experimental.src import token_monitor
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────

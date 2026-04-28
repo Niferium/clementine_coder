@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.logger import Logger
+    from clem_experimental.src.logger import Logger
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────

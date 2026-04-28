@@ -14,9 +14,9 @@ Usage:
 import argparse
 from pathlib import Path
 
-from src.agent  import Agent
-from src.logger import Logger
-from src.server import create_app
+from clem_experimental.src.agent  import Agent
+from clem_experimental.src.logger import Logger
+from clem_experimental.src.server import create_app
 
 
 def main():

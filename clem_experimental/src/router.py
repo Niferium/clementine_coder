@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from mlx_lm import generate
 
 if TYPE_CHECKING:
-    from src.logger import Logger
+    from clem_experimental.src.logger import Logger
 
 
 def build_router_prompt(tokenizer, user_message: str, skills: dict) -> str:

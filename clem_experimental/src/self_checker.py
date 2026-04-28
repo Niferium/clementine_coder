@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from mlx_lm import generate
 
 if TYPE_CHECKING:
-    from src.logger import Logger
+    from clem_experimental.src.logger import Logger
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────
