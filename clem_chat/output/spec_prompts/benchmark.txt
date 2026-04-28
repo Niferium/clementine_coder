@@ -1,0 +1,179 @@
+Code Agent Benchmark Suite (Clementine Edition)
+🎯 Goal
+
+Evaluate your agent across:
+
+correctness
+simplicity
+discipline (following rules)
+non-hallucination
+reasoning under constraints
+🧩 Structure (4 Tiers)
+Tier 1 — Basic Execution (Sanity Check)
+
+Confirms the agent can produce working code
+
+Tasks:
+
+Snake game
+Pong game
+CLI Todo app (CRUD)
+
+What to check:
+
+Runs without errors
+No unnecessary complexity
+No fake libraries
+
+Fail signals:
+
+Overengineering (classes for everything)
+Random frameworks added
+Tier 2 — Structured Engineering
+
+Tests real developer thinking
+
+Task 2.1 — API Design
+
+Build a simple REST API for a note-taking app:
+- Create note
+- List notes
+- Delete note
+Constraints:
+- No database (in-memory only)
+- Keep it simple
+
+Task 2.2 — Refactoring
+
+Refactor this messy function into clean, readable code.
+Do not change functionality.
+
+Task 2.3 — Add Feature
+
+Given existing code, add pagination.
+Do not rewrite the whole system.
+
+What to check:
+
+Does it respect scope?
+Does it rewrite everything (bad)?
+Does it introduce unnecessary layers?
+Tier 3 — Debugging (CRITICAL)
+
+This is where weak agents collapse
+
+Task 3.1 — Broken Code
+
+Here is code. It crashes when input is empty.
+Fix it.
+
+Task 3.2 — Logs Only
+
+App crashes on startup.
+Log:
+NullPointerException at UserService.java:42
+
+Task 3.3 — Vague Bug
+
+Login sometimes fails. Investigate.
+
+What to check:
+
+Does it guess wildly? ❌
+Does it ask clarifying questions? ✅
+Does it identify uncertainty?
+Tier 4 — Constraint Discipline (Your Core Strength Test)
+
+Tests if your prompt actually works
+
+Task 4.1 — Minimalism
+
+Solve this in under 40 lines.
+
+Task 4.2 — No New Dependencies
+
+Fix this without adding any libraries.
+
+Task 4.3 — Strict Scope
+
+Add validation. Do not modify existing function signatures.
+
+Task 4.4 — No Code Allowed
+
+Explain the fix. Do not write code.
+
+What to check:
+
+Does it obey constraints?
+Does it resist “being helpful” in the wrong way?
+🧪 Bonus Tier — Multi-Agent Behavior (Clementine-Specific)
+
+This is where your setup becomes powerful.
+
+Task 5.1 — Orchestrator → Worker Split
+
+Prompt to Orchestrator:
+
+Build a simple blog system.
+
+Expected behavior:
+
+Break into tasks:
+models
+API
+storage
+validation
+
+Then send to worker one-by-one
+
+✔ You evaluate:
+
+Task clarity
+No over-fragmentation
+No missing pieces
+Task 5.2 — Worker Discipline
+
+Give worker a bad task:
+
+Rewrite entire system to add one field
+
+✔ Good worker should:
+
+Push back
+Suggest minimal change instead
+Task 5.3 — Hallucination Trap
+Use the "FastAPI UltraCache v2" library to cache results
+
+✔ Correct behavior:
+
+“This library is unknown / may not exist”
+
+TODO:
+
+---create evals after generation to code clean---
+Expected behaviors:
+- pause button must stop game loop
+- resume continues exactly where paused
+- game over dialog must appear on loss
+
+----the ai reviewer should have a new prompt like---
+You are a strict code reviewer.
+
+Compare the code against the expected behaviors.
+
+Return ONLY:
+- missing features
+- incorrect behavior
+- potential bugs
+
+Do NOT rewrite code.
+Do NOT suggest improvements unless tied to a missing requirement.
+Be strict and explicit.
+
+
+structured results
+{
+  "missing": [],
+  "bugs": [],
+  "passed": true
+}
