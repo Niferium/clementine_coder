@@ -138,7 +138,7 @@ class App:
                         #         "language": b["language"],
                         #         "extension": b["extension"],
                         #     })
-
+                        result = self.agent.evaluate_last_response(full_response)
                         yield f"data: {json.dumps({'done': True, 'files': []})}\n\n"
 
                     return Response(
