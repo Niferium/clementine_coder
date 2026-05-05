@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clementine Coder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-title">⬡ Clementine Coder</div>
+      <div class="brand-sub">Local AI · MLX · Apple Silicon</div>
+    </div>
+
+    <div class="model-status">
+      <div class="status-dot loading" id="status-dot"></div>
+      <div>
+        <div class="status-label" id="status-label">Initializing…</div>
+        <div class="status-model" id="status-model"></div>
+      </div>
+    </div>
+
+    <button class="btn-new-chat" onclick="newChat()">
+      <span>＋</span> New chat
+    </button>
+
+    <!-- <div class="sidebar-section">Models</div>
+    <div class="model-list" id="model-list">
+      <div class="model-item active" data-model="mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit" onclick="selectModel(this)">
+        Qwen3-Coder-30B-A3B-Instruct-4bit
+        <div class="model-size">~17.2 GB · Recommended</div>
+      </div>
+      <div class="model-item" data-model="Qwen/Qwen2.5-Coder-3B-Instruct" onclick="selectModel(this)">
+        Qwen2.5-Coder-3B
+        <div class="model-size">~6 GB · Fast</div>
+      </div>
+      <div class="model-item" data-model="Qwen/Qwen2.5-Coder-1.5B-Instruct" onclick="selectModel(this)">
+        Qwen2.5-Coder-1.5B
+        <div class="model-size">~3 GB · Lightweight</div>
+      </div>
+      <div class="model-item" data-model="Qwen/Qwen2.5-Coder-0.5B-Instruct" onclick="selectModel(this)">
+        Qwen2.5-Coder-0.5B
+        <div class="model-size">~1 GB · Minimal</div>
+      </div>
+    </div> -->
+
+    <div class="sidebar-footer">
+      mlx-lm · Running locally
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-model-badge" id="topbar-model">—</span>
+        <span id="topbar-status" style="color:var(--text-muted);font-size:11px;">Loading model…</span>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">{ }</div>
+        <div class="empty-title">Ask me to write code</div>
+        <div class="empty-sub">I generate code in any language</div>
+        <div class="quick-prompts">
+          <button class="quick-prompt" onclick="usePrompt('Write a REST API in Python using FastAPI with CRUD operations for a todo list')">
+            <strong>Python API</strong>FastAPI REST + CRUD example
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('Write a Kotlin data class for a User with serialization and validation')">
+            <strong>Kotlin</strong>Data class + serialization
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('Write an HTML page with a dark-themed landing page and CSS animations')">
+            <strong>HTML/CSS</strong>Dark landing page
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('Write a Swift struct for networking with async/await URLSession')">
+            <strong>Swift</strong>Async networking struct
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('create me a pong game using html, add start button, ai opponent, wasd and arrow key controls, score board, win message when score reaches 5')">
+            <strong>Create Pong Game</strong>Pong game (1972) Vibed
+          </button>
+          <button class="quick-prompt" onclick="usePrompt('create me a snake game in html, add start button, if the user loose, add dialog then reset button, let scores be tracked then let high score save locally, beautify the UI as much as possible')">
+            <strong>Create Snake Game</strong>Snake  game (1976) Vibed
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea id="user-input" placeholder="Ask for code in any language…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="btn-send" id="send-btn" onclick="sendMessage()">↑</button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+    </div>
+  </main>
+</div>
+
+<div class="download-toast" id="toast"></div>
+</body>
+</html>

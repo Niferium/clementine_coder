@@ -3,7 +3,7 @@ import re
 import json
 import uuid
 import threading
-from flask import Flask, request, jsonify, Response, stream_with_context, send_file
+from flask import Flask, request, jsonify, Response, stream_with_context, send_file, render_template
 from flask_cors import CORS
 import src.config as config
 from src.model_agent import Agent
@@ -15,10 +15,12 @@ class App:
     
     def __init__(self):
         self.BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        self.STATIC_DIR = os.path.join(self.BASE_DIR, "src/ui")
-        self.DOWNLOADS_DIR = os.path.join(self.BASE_DIR, "downloads")
-
-        self.app = Flask(__name__, static_folder=self.STATIC_DIR)
+        self.app = Flask(
+            __name__,
+            template_folder=os.path.join(self.BASE_DIR, "src/ui/templates"),
+            static_folder=os.path.join(self.BASE_DIR, "src/ui/static"),
+            static_url_path='/static'
+        )
         self.agent = Agent()
         self.maxTokens = config.MAX_TOKENS
         self.EXT_MAP = {
@@ -83,7 +85,7 @@ class App:
     def _setup_routes(self):
         @self.app.route('/')
         def index():
-            return self.app.send_static_file("index.html")
+            return render_template("index.html")
         
         @self.app.route("/api/health", methods=["GET"])
         def health():
