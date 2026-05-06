@@ -1,3 +1,4 @@
+# model_agent v2 - added file reading content
 
 import src.config as config
 from src.log.logger import Logger
@@ -11,13 +12,14 @@ from typing import Iterator
 import mlx.core as mx
 from mlx_lm import load, generate, stream_generate
 from mlx_lm.sample_utils import make_sampler, make_logits_processors
+from src.EvaluationAgent import EvaluationAgent
 
 
 class Agent:
     
     def __init__(self):
         self.logger = Logger()
-        self.mainModel = config.MAIN_MODEL
+        self.mainModel = config.CODER_MODEL
         self.routerModel = config.ROUTER_MODEL
         self.maxTokens = config.MAX_TOKENS
         self._lock = threading.Lock()
@@ -33,10 +35,31 @@ class Agent:
 
         self.sys_prompt = sys_prompt
 
+        self.evaluation_agent = EvaluationAgent()
+
         # Auto-load default model on startup
         t = threading.Thread(target=self.load, args=(self.mainModel,), daemon=True)
         t.start()
 
+    def _refreshModel(self, model_name: str):
+        # Loads the specified model, unloading any previously loaded model to free up memory. If the requested model is already loaded, it simply returns it.
+
+        if self._loaded_name == model_name:
+            return self._loaded_model, self._loaded_tokenizer
+
+        if self._loaded_model is not None:
+            print(f"   🔄 Unloading {self._loaded_name}...")
+            self._loaded_model     = None
+            self._loaded_tokenizer = None
+            self._loaded_name      = None
+            gc.collect()
+            mx.metal.clear_cache()
+
+        print(f"   📦 Loading {model_name}...")
+        self._loaded_model, self._loaded_tokenizer = load(model_name)
+        self._loaded_name = model_name
+        return self._loaded_model, self._loaded_tokenizer
+    
     def load(self, model_name: str):
         with self._lock:
             self._loading = True
@@ -44,7 +67,7 @@ class Agent:
 
         try:
             print(f"[model] Loading {model_name} …")
-            model, tokenizer = load(model_name)
+            model, tokenizer = self._refreshModel(model_name)
             with self._lock:
                 self._loaded_model = model
                 self._loaded_tokenizer = tokenizer
@@ -93,6 +116,11 @@ class Agent:
         elif bool(re.search(r'use cim', user_prompt, re.IGNORECASE)):
             self.logger.log_debug(f"Agent will use Chat Maker for LLMS")
             return self.sys_prompt.SYSTEM_PROMPT_CHAT_INTERFACE_MAKER()
+        
+        elif bool(re.search(r'use cu', user_prompt, re.IGNORECASE)):
+            self.logger.log_debug(f"Agent will use Code Upgrader for LLMS")
+            return self.sys_prompt.SYSTEM_PROMPT_CODE_UPGRADER()
+        
         else:
             self.logger.log_debug(f"Agent will use default")
             return self.sys_prompt.SYSTEM_PROMPT_SENIOR_SOFTWARE_ENGINEER()
@@ -143,23 +171,22 @@ class Agent:
             logits_processors = logits_processors
         )
         return response
-
+    
     def stream_chat(self, user_input: list[dict], max_tokens: int = 2048) -> Iterator[str]:
 
         # Prepare input for generation (this is where you would include conversation history, system prompts, etc.)
         rawUserInput = user_input[-1]["content"]
         systemPrompt = self.get_prompt_category(rawUserInput)
-
-        print(f"my prompt {systemPrompt} raw print {rawUserInput}")
-        self.logger.log_debug(systemPrompt)
+        self.logger.log_debug(rawUserInput)
         if self._loaded_tokenizer.chat_template is not None:
-            conversation = [
-                {"role": "system", "content": systemPrompt},
-                {"role": "user", "content": rawUserInput}
-            ]
-            prompt = self._loaded_tokenizer.apply_chat_template(conversation, add_generation_prompt=True)
+            # Build full conversation with system prompt prepended
+            conversation = [{"role": "system", "content": systemPrompt}] + user_input
+            prompt = self._loaded_tokenizer.apply_chat_template(
+                conversation, add_generation_prompt=True
+            )
         else:
-            prompt = self.sys_prompt.SYSTEM_PROMPT_SENIOR_SOFTWARE_ENGINEER() + "\n" + rawUserInput
+            prompt = systemPrompt + "\n" + rawUserInput
+
         
         input_tokens = self._loaded_tokenizer.encode(rawUserInput)
         if len(input_tokens) > self.maxTokens:
@@ -171,7 +198,7 @@ class Agent:
         #Settings for llm
         sampler = make_sampler(temp=0.3, top_p=0.9)
         logits_processors = make_logits_processors(repetition_penalty=1.05)
-
+        
         for chunk in stream_generate(
             model,
             tokenizer,
@@ -185,3 +212,10 @@ class Agent:
                 yield chunk.text
             else:
                 yield chunk
+
+    def evaluate_last_response(self, full_response: str) -> dict:
+        return self.evaluation_agent.evaluate_response(
+            builder_response=full_response,
+            _loaded_model=self._loaded_model,
+            _loaded_tokenizer=self._loaded_tokenizer,
+    )
