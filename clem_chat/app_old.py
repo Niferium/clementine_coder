@@ -7,12 +7,12 @@ import threading
 from flask import Flask, request, jsonify, Response, stream_with_context, send_file, render_template
 from flask_cors import CORS
 import src.config as config
-from src.coding_agent import Agent
+from src.model_agent import Agent
 import os
 
 
 #UI Chat version
-class App:
+class AppOld:
     
     def __init__(self):
         self.logger = Logger()
@@ -121,6 +121,30 @@ class App:
             """Chat endpoint for LLM interaction"""
             try:
                 if stream:
+                    # def generate():
+                    #     self._conversation_history.append(user_input[-1])
+                        
+                    #     full_response = ""
+                    #     for chunk in self.agent.stream_chat(self._conversation_history, max_tokens=max_tokens):
+                    #         full_response += chunk
+                    #         yield f"data: {json.dumps({'delta': chunk})}\n\n"
+
+                    #     # After streaming, extract code blocks and attach metadata
+                    #     # blocks = self.extract_code_blocks(full_response)
+                    #     # saved = []
+                    #     # for b in blocks:
+                    #     #     file_id = str(uuid.uuid4())[:8]
+                    #     #     fname = f"code_{file_id}.{b['extension']}"
+                    #     #     fpath = os.path.join(self.DOWNLOADS_DIR, fname)
+                    #     #     with open(fpath, "w", encoding="utf-8") as f:
+                    #     #         f.write(b["code"])
+                    #     #     saved.append({
+                    #     #         "file_id": fname,
+                    #     #         "language": b["language"],
+                    #     #         "extension": b["extension"],
+                    #     #     })
+                    #     self._conversation_history.append({"role": "assistant", "content": full_response})
+                    #     yield f"data: {json.dumps({'done': True, 'files': []})}\n\n"
                     def generate():
                         MAX_RETRIES = 3
                         current_input = user_input  # user_input is list[dict] from outer scope
@@ -199,6 +223,19 @@ class App:
                     )
                 else:
                     response_text = self.agent.chat(user_input, max_tokens=max_tokens)
+                    # blocks = self.extract_code_blocks(response_text)
+                    # saved = []
+                    # for b in blocks:
+                    #     file_id = str(uuid.uuid4())[:8]
+                    #     fname = f"code_{file_id}.{b['extension']}"
+                    #     fpath = os.path.join(self.DOWNLOADS_DIR, fname)
+                    #     with open(fpath, "w", encoding="utf-8") as f:
+                    #         f.write(b["code"])
+                    #     saved.append({
+                    #         "file_id": fname,
+                    #         "language": b["language"],
+                    #         "extension": b["extension"],
+                    #     })
                     return jsonify({"response": response_text, "files": []})
             except Exception as e:
                 return jsonify({
@@ -217,5 +254,5 @@ class App:
 
 
 if __name__ == '__main__':
-    app = App()
+    app = AppOld()
     app.run(host='0.0.0.0', port=5001, debug=False)
